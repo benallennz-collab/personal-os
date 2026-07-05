@@ -1,0 +1,60 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+  body {
+    @apply text-slate-900 antialiased;
+    font-feature-settings: 'cv11', 'ss01', 'tnum';
+    background-image:
+      radial-gradient(at 0% 0%, rgb(79 70 229 / 0.05) 0px, transparent 50%),
+      radial-gradient(at 100% 0%, rgb(79 70 229 / 0.04) 0px, transparent 50%);
+    background-attachment: fixed;
+  }
+  h1,
+  h2,
+  h3 {
+    letter-spacing: -0.01em;
+  }
+}
+
+@layer utilities {
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    @apply bg-slate-300 rounded-full;
+  }
+}
+
+@keyframes backdrop-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes modal-pop {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-backdrop-in {
+  animation: backdrop-fade 0.15s ease-out;
+}
+
+.animate-modal-in {
+  animation: modal-pop 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
