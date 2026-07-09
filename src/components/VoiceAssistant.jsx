@@ -12,6 +12,7 @@ export default function VoiceAssistant({ open, onClose }) {
   const [result, setResult] = useState(null)
   const recognitionRef = useRef(null)
   const finalTranscriptRef = useRef('')
+  const committedCountRef = useRef(0)
   const audioRef = useRef(null)
 
   useEffect(() => {
@@ -42,16 +43,24 @@ export default function VoiceAssistant({ open, onClose }) {
     recognition.continuous = true
 
     finalTranscriptRef.current = ''
+    committedCountRef.current = 0
 
     recognition.onresult = (event) => {
-      // Only scan results new since the last event (event.resultIndex) — re-scanning
-      // from index 0 each time is what causes Chrome to visibly duplicate finalized
-      // segments in continuous mode.
+      // Stale instance whose events are still trickling in after being replaced — ignore.
+      if (recognitionRef.current !== recognition) return
+
+      // Scan the whole results list every time (not just event.resultIndex onward) —
+      // Chrome's continuous mode can re-report an index that was already final in an
+      // earlier event. committedCountRef guards against re-appending an index we've
+      // already committed, so re-scanning is safe and self-correcting either way.
       let interim = ''
-      for (let i = event.resultIndex; i < event.results.length; i++) {
+      for (let i = 0; i < event.results.length; i++) {
         const chunk = event.results[i][0].transcript
         if (event.results[i].isFinal) {
-          finalTranscriptRef.current += chunk + ' '
+          if (i >= committedCountRef.current) {
+            finalTranscriptRef.current += chunk + ' '
+            committedCountRef.current = i + 1
+          }
         } else {
           interim += chunk
         }
@@ -59,6 +68,7 @@ export default function VoiceAssistant({ open, onClose }) {
       setTranscript((finalTranscriptRef.current + interim).trim())
     }
     recognition.onerror = () => {
+      if (recognitionRef.current !== recognition) return
       setListening(false)
       setStatus('idle')
     }
