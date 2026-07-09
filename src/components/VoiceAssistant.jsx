@@ -12,10 +12,12 @@ export default function VoiceAssistant({ open, onClose }) {
   const [result, setResult] = useState(null)
   const recognitionRef = useRef(null)
   const finalTranscriptRef = useRef('')
+  const audioRef = useRef(null)
 
   useEffect(() => {
     if (!open) {
       recognitionRef.current?.stop()
+      audioRef.current?.pause()
       setListening(false)
       setTranscript('')
       setResult(null)
@@ -69,10 +71,38 @@ export default function VoiceAssistant({ open, onClose }) {
     recognition.start()
   }
 
-  const speak = (text) => {
+  const speakWithBrowserFallback = (text) => {
     if (!window.speechSynthesis || !text) return
     window.speechSynthesis.cancel()
     window.speechSynthesis.speak(new SpeechSynthesisUtterance(text))
+  }
+
+  const speak = async (text) => {
+    if (!text) return
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+
+      const res = await fetch('/api/text-to-speech', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, accessToken: session?.access_token }),
+      })
+      if (!res.ok) throw new Error('Text-to-speech request failed')
+
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      audioRef.current?.pause()
+      const audio = new Audio(url)
+      audio.onended = () => URL.revokeObjectURL(url)
+      audioRef.current = audio
+      await audio.play()
+    } catch {
+      // Azure Speech not configured yet, or the request failed — fall back to the
+      // browser's built-in voice rather than going silent.
+      speakWithBrowserFallback(text)
+    }
   }
 
   const stopAndSend = async () => {
@@ -110,6 +140,7 @@ export default function VoiceAssistant({ open, onClose }) {
 
   const handleClose = () => {
     window.speechSynthesis?.cancel()
+    audioRef.current?.pause()
     onClose()
   }
 

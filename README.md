@@ -25,13 +25,14 @@ src/
     AuthGate.jsx          Sign-in/sign-up screen shown when logged out
     DataGate.jsx          Loading spinner until the first fetch of every table completes
     MigrationPrompt.jsx   One-time offer to import old localStorage data into the cloud account
-    VoiceAssistant.jsx    Mic button UI — records speech, calls /api/voice-command, speaks the reply back
+    VoiceAssistant.jsx    Mic button UI — records speech, calls /api/voice-command, speaks the reply back via /api/text-to-speech
     Layout, Sidebar, BottomNav, QuickAddModal, BackupModal, PageHeader
   components/ui/          Reusable primitives: Card, Button, Badge, Modal, ProgressBar, FormField, EmptyState
   pages/                  One file per section (ExecutiveDashboard, GoalsKPIs, WeeklyPlanner, HealthDashboard, WeeklyReviews, IdeasInbox)
   utils/date.js           Week/date helpers
   nav.js                  Sidebar/bottom nav item config (add a new section here + a route in App.jsx)
 api/voice-command.js      Vercel serverless function — the ONLY place the Anthropic API key is ever used
+api/text-to-speech.js     Vercel serverless function — the ONLY place the Azure Speech key is ever used
 supabase/schema.sql       Postgres tables + row-level security + realtime publication — run once in the Supabase SQL Editor
 ```
 
@@ -63,6 +64,19 @@ Optional — the app works fully without it, just without the mic button. Skip t
    - Optionally your local `.env` (already gitignored) if you want to test the voice feature locally via `vercel dev` — plain `npm run dev` (Vite) doesn't run the `/api` serverless function at all.
 
 The voice assistant uses Claude Haiku 4.5 — cheap enough that normal personal use costs a small fraction of a cent per command.
+
+## One-time setup: New Zealand voice (Azure Speech)
+
+Also optional — without this, spoken replies just use your browser's default system voice instead of a New Zealand one.
+
+1. Go to [portal.azure.com](https://portal.azure.com) → sign up (Azure has a free tier; Speech's free tier is ~0.5 million characters/month, far more than personal use needs).
+2. Create a resource: search **"Speech"** → **Speech service** → **Create**. Pick any region close to you (e.g. `australiaeast`) and the **Free F0** pricing tier.
+3. Once created, go to **Keys and Endpoint** on that resource. Copy **KEY 1** and the **Location/Region** value (e.g. `australiaeast`).
+4. Same rule as the Anthropic key — this is a true secret, never share it or commit it. It only belongs in:
+   - Vercel → **Settings → Environment Variables**: `AZURE_SPEECH_KEY` and `AZURE_SPEECH_REGION`.
+   - Optionally your local `.env` for testing via `vercel dev`.
+
+Uses the `en-NZ-MollyNeural` voice (used by [`api/text-to-speech.js`](api/text-to-speech.js)). If this isn't configured, or the request fails for any reason, the app quietly falls back to your browser's built-in voice rather than going silent.
 
 ## How to run it locally
 
@@ -128,4 +142,6 @@ Click **Voice Assistant** (sidebar on desktop, mic icon in the mobile header) an
 - **Add things:** "Add a task to call the dentist tomorrow", "Add a goal to read 20 books this year, target 20", "Log today's sleep, 7 and a half hours".
 - **Answer questions about your data:** "What's on my plate today?", "How's my marathon goal coming along?" — answered out loud via your device's text-to-speech.
 
-Uses the browser's built-in speech recognition, which is reliable in Chrome (desktop and Android) but not supported in Firefox and only partially in Safari. Every command goes through [`api/voice-command.js`](api/voice-command.js), which is the only place `ANTHROPIC_API_KEY` is ever read — it never reaches the browser. Requires the Anthropic API setup above; without it, the mic button will show a clear "not configured" error instead of the app breaking.
+Uses the browser's built-in speech *recognition* (listening), which is reliable in Chrome (desktop and Android) but not supported in Firefox and only partially in Safari. Every command goes through [`api/voice-command.js`](api/voice-command.js), which is the only place `ANTHROPIC_API_KEY` is ever read — it never reaches the browser. Requires the Anthropic API setup above; without it, the mic button will show a clear "not configured" error instead of the app breaking.
+
+Spoken *replies* use a New Zealand voice (Azure Speech's `en-NZ-MollyNeural`) via [`api/text-to-speech.js`](api/text-to-speech.js) if the Azure setup above is done — otherwise it quietly falls back to your browser's default system voice.
