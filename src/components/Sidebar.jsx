@@ -1,9 +1,9 @@
 import { NavLink } from 'react-router-dom'
-import { Sparkles, DatabaseBackup, LogOut } from 'lucide-react'
+import { Sparkles, DatabaseBackup, LogOut, Mic } from 'lucide-react'
 import { NAV_ITEMS } from '../nav'
 import { useAuth } from '../context/AuthContext'
 
-export default function Sidebar({ onQuickAdd, onBackup }) {
+export default function Sidebar({ onQuickAdd, onBackup, onVoice }) {
   const { user, signOut } = useAuth()
 
   return (
@@ -57,6 +57,13 @@ export default function Sidebar({ onQuickAdd, onBackup }) {
         >
           <Sparkles size={16} />
           Quick Add
+        </button>
+        <button
+          onClick={onVoice}
+          className="w-full flex items-center justify-center gap-2 bg-white border border-slate-200 hover:border-brand-300 hover:bg-brand-50/40 text-slate-700 text-sm font-medium px-3 py-2.5 rounded-xl transition-colors"
+        >
+          <Mic size={15} />
+          Voice Assistant
         </button>
         <div className="flex gap-1">
           <button

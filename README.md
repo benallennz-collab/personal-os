@@ -11,7 +11,7 @@ A mobile-responsive personal operating system dashboard, built with React, Vite,
 5. **Weekly Executive Reviews** — wins, challenges, lessons, and next-week focus, one entry per week.
 6. **Ideas Inbox** — quick capture with tags, status (new/considering/archived), search and filter.
 
-Every section is reachable from the sidebar (desktop) or bottom nav (mobile), and a global **Quick Add** button (top of sidebar, mobile header, and floating action button) lets you capture a task, goal, idea, or health log from anywhere in one tap.
+Every section is reachable from the sidebar (desktop) or bottom nav (mobile), a global **Quick Add** button (sidebar, mobile header, floating action button) lets you capture a task, goal, idea, or health log from anywhere in one tap, and a **Voice Assistant** lets you do the same (plus ask questions about your data) by speaking.
 
 ## Project structure
 
@@ -25,11 +25,13 @@ src/
     AuthGate.jsx          Sign-in/sign-up screen shown when logged out
     DataGate.jsx          Loading spinner until the first fetch of every table completes
     MigrationPrompt.jsx   One-time offer to import old localStorage data into the cloud account
+    VoiceAssistant.jsx    Mic button UI — records speech, calls /api/voice-command, speaks the reply back
     Layout, Sidebar, BottomNav, QuickAddModal, BackupModal, PageHeader
   components/ui/          Reusable primitives: Card, Button, Badge, Modal, ProgressBar, FormField, EmptyState
   pages/                  One file per section (ExecutiveDashboard, GoalsKPIs, WeeklyPlanner, HealthDashboard, WeeklyReviews, IdeasInbox)
   utils/date.js           Week/date helpers
   nav.js                  Sidebar/bottom nav item config (add a new section here + a route in App.jsx)
+api/voice-command.js      Vercel serverless function — the ONLY place the Anthropic API key is ever used
 supabase/schema.sql       Postgres tables + row-level security + realtime publication — run once in the Supabase SQL Editor
 ```
 
@@ -48,6 +50,19 @@ To add a new section later: create a page in `src/pages`, add a table + RLS poli
    ```
    `.env` is already gitignored — it's just for this machine.
 6. By default Supabase requires email confirmation for new accounts. Since this is a single-person tool, you can turn that off for convenience: **Authentication → Providers → Email → toggle off "Confirm email"** (or just click the confirmation link Supabase emails you the first time — either works).
+
+## One-time setup: Voice Assistant (Anthropic API)
+
+Optional — the app works fully without it, just without the mic button. Skip this if you don't want voice control.
+
+1. Go to [console.anthropic.com](https://console.anthropic.com) → sign up. This is a separate, pay-per-use API account — not the same as a claude.ai subscription.
+2. Add a payment method: **Settings → Billing**.
+3. Create a key: **Settings → API Keys → Create Key**. Copy it — you won't be able to see it again.
+4. This key is a true secret (unlike the Supabase anon key) — **never** put it in `.env` with a `VITE_` prefix, commit it, or paste it into a chat/AI tool. It only ever belongs in:
+   - Your Vercel project's **Settings → Environment Variables**, as `ANTHROPIC_API_KEY` (used by [`api/voice-command.js`](api/voice-command.js), which runs server-side only).
+   - Optionally your local `.env` (already gitignored) if you want to test the voice feature locally via `vercel dev` — plain `npm run dev` (Vite) doesn't run the `/api` serverless function at all.
+
+The voice assistant uses Claude Haiku 4.5 — cheap enough that normal personal use costs a small fraction of a cent per command.
 
 ## How to run it locally
 
@@ -69,28 +84,31 @@ npm run build     # production build → dist/
 npm run preview   # preview the production build locally
 ```
 
+## Deployment
+
+The app is deployed on Vercel, connected to this GitHub repo — every push to `main` auto-deploys a new version within about a minute, with the previous deployment kept for instant rollback if something breaks. Vercel needs the same two `VITE_SUPABASE_*` variables as local `.env` (**Project Settings → Environment Variables**), plus `ANTHROPIC_API_KEY` if you want the voice assistant to work in production (see above).
+
+Whenever the deployed URL changes (a new Vercel project, a custom domain, etc.), update Supabase's **Authentication → URL Configuration**: set **Site URL** to the new address and add `<url>/**` to **Redirect URLs** (keep `http://localhost:5173/**` too, for local dev).
+
 ## Install as an app (desktop + mobile icon)
 
-The app is a PWA (`public/manifest.webmanifest` + `public/icons/`), so both desktop and mobile browsers can install it as a standalone app with a real icon instead of just a browser tab. The dev server (or a preview server) needs to be running for the icon to open anything — see the two options below.
+The app is a PWA (`public/manifest.webmanifest` + `public/icons/`), so both desktop and mobile browsers can install it as a standalone app with a real icon instead of just a browser tab. Since it's deployed, **neither device needs your computer on** — point both at your Vercel URL.
 
 ### Desktop (Windows, Chrome or Edge)
 
-1. `npm run dev` and open `http://localhost:5173`.
+1. Open your deployed URL in Chrome.
 2. Click the **install icon** in the address bar (a monitor-with-arrow icon), or the ⋮ menu → **"Install Personal OS…"**.
 3. Confirm — this creates a Start Menu entry and a Desktop shortcut that opens the app in its own window with the Personal OS icon.
 
-**Avoid double launches at startup:** the installed PWA has its own separate "start at sign-in" toggle from the [`start-personal-os.bat`](start-personal-os.bat) Startup shortcut used below — if both are on, two things open at login. Keep only one enabled: either rely on the Startup shortcut (recommended, since it also starts the server), or, if you'd rather use Chrome's own toggle, open the installed app, click **⋮ → uninstall/app settings**, and turn off **"Start app when you sign in"** there so Chrome doesn't add its own duplicate entry to your Startup folder (`Win + R` → `shell:startup` to check what's actually in there if things ever look duplicated again).
+### Mobile
 
-### Mobile (phone on the same Wi-Fi)
+1. Open your deployed URL in your phone's browser (any network — no longer tied to your home Wi-Fi).
+2. **Android (Chrome):** ⋮ menu → **"Add to Home screen"**. **iOS (Safari):** Share button → **"Add to Home Screen"**.
+3. A Personal OS icon appears on your home screen and opens full-screen (no browser chrome), already synced to your desktop.
 
-`vite.config.js` sets `host: true`, so every `npm run dev` (including the one that runs automatically at Windows startup) listens on your LAN automatically — no extra flags needed.
+### Local development (only needed when changing code)
 
-1. Run `npm run dev` (or just let it start via the Startup shortcut) — the terminal prints both a `Local` and a `Network` URL, e.g. `http://192.168.1.23:5173/`.
-2. On your phone (same Wi-Fi), open a browser to that `Network` address and sign in with the same account.
-3. **Android (Chrome):** ⋮ menu → **"Add to Home screen"**. **iOS (Safari):** Share button → **"Add to Home Screen"**.
-4. A Personal OS icon appears on your home screen and opens full-screen (no browser chrome), already synced to your desktop.
-
-Your phone only needs your PC's dev server running the *first* time you load it there — after that it still needs the PC's server running every time, since there's no separately hosted deployment yet (see "Future considerations" in `CLAUDE.md`). Data itself, though, lives in Supabase, not on the PC.
+`npm run dev` still works for iterating on the app locally (`http://localhost:5173`, and `vite.config.js`'s `host: true` also exposes it on your LAN at the printed `Network` URL) — but the `/api/voice-command` serverless function only runs on Vercel or via the Vercel CLI's `vercel dev`, not plain `vite`. [`start-personal-os.bat`](start-personal-os.bat) + its Windows Startup shortcut are optional now that the app is deployed; keep them only if you want a local copy running for development.
 
 ## Data & persistence
 
@@ -103,3 +121,11 @@ All data lives in your Supabase project's Postgres database, scoped to your acco
 **What clearing browser data now affects:** it only signs that device out (clears the local Supabase session token) — your data is untouched, since it never lived in `localStorage` in the first place. Just sign back in.
 
 **If you're migrating from the old local-only version of this app:** the first time you sign in on a device that still has old data, you'll see an **"Import your previous data?"** prompt — accept it once to carry that data into your account (and it clears the old local copy so you won't see the prompt again on that device).
+
+## Voice Assistant
+
+Click **Voice Assistant** (sidebar on desktop, mic icon in the mobile header) and tap the mic to talk. It can:
+- **Add things:** "Add a task to call the dentist tomorrow", "Add a goal to read 20 books this year, target 20", "Log today's sleep, 7 and a half hours".
+- **Answer questions about your data:** "What's on my plate today?", "How's my marathon goal coming along?" — answered out loud via your device's text-to-speech.
+
+Uses the browser's built-in speech recognition, which is reliable in Chrome (desktop and Android) but not supported in Firefox and only partially in Safari. Every command goes through [`api/voice-command.js`](api/voice-command.js), which is the only place `ANTHROPIC_API_KEY` is ever read — it never reaches the browser. Requires the Anthropic API setup above; without it, the mic button will show a clear "not configured" error instead of the app breaking.

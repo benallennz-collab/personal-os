@@ -1,12 +1,12 @@
 import { Outlet } from 'react-router-dom'
-import { Plus, Sparkles, DatabaseBackup } from 'lucide-react'
+import { Plus, Sparkles, DatabaseBackup, Mic } from 'lucide-react'
 import Sidebar from './Sidebar'
 import BottomNav from './BottomNav'
 
-export default function Layout({ onQuickAdd, onBackup }) {
+export default function Layout({ onQuickAdd, onBackup, onVoice }) {
   return (
     <div className="min-h-screen flex">
-      <Sidebar onQuickAdd={onQuickAdd} onBackup={onBackup} />
+      <Sidebar onQuickAdd={onQuickAdd} onBackup={onBackup} onVoice={onVoice} />
 
       <div className="flex-1 flex flex-col min-w-0">
         <header className="md:hidden sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-slate-200/80 px-4 py-3 flex items-center justify-between">
@@ -17,6 +17,13 @@ export default function Layout({ onQuickAdd, onBackup }) {
             <p className="font-semibold text-slate-900 text-sm tracking-tight">Personal OS</p>
           </div>
           <div className="flex items-center gap-1.5">
+            <button
+              onClick={onVoice}
+              aria-label="Voice Assistant"
+              className="p-2 rounded-lg text-slate-500 hover:bg-slate-100"
+            >
+              <Mic size={16} />
+            </button>
             <button
               onClick={onBackup}
               aria-label="Backup & Restore"

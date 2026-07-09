@@ -7,6 +7,7 @@ import DataGate from './components/DataGate'
 import Layout from './components/Layout'
 import QuickAddModal from './components/QuickAddModal'
 import BackupModal from './components/BackupModal'
+import VoiceAssistant from './components/VoiceAssistant'
 import MigrationPrompt from './components/MigrationPrompt'
 import ExecutiveDashboard from './pages/ExecutiveDashboard'
 import GoalsKPIs from './pages/GoalsKPIs'
@@ -18,6 +19,7 @@ import IdeasInbox from './pages/IdeasInbox'
 export default function App() {
   const [quickAddOpen, setQuickAddOpen] = useState(false)
   const [backupOpen, setBackupOpen] = useState(false)
+  const [voiceOpen, setVoiceOpen] = useState(false)
 
   return (
     <AuthProvider>
@@ -26,7 +28,15 @@ export default function App() {
           <DataGate>
             <HashRouter>
               <Routes>
-                <Route element={<Layout onQuickAdd={() => setQuickAddOpen(true)} onBackup={() => setBackupOpen(true)} />}>
+                <Route
+                  element={
+                    <Layout
+                      onQuickAdd={() => setQuickAddOpen(true)}
+                      onBackup={() => setBackupOpen(true)}
+                      onVoice={() => setVoiceOpen(true)}
+                    />
+                  }
+                >
                   <Route path="/" element={<ExecutiveDashboard />} />
                   <Route path="/goals" element={<GoalsKPIs />} />
                   <Route path="/planner" element={<WeeklyPlanner />} />
@@ -38,6 +48,7 @@ export default function App() {
             </HashRouter>
             <QuickAddModal open={quickAddOpen} onClose={() => setQuickAddOpen(false)} />
             <BackupModal open={backupOpen} onClose={() => setBackupOpen(false)} />
+            <VoiceAssistant open={voiceOpen} onClose={() => setVoiceOpen(false)} />
             <MigrationPrompt />
           </DataGate>
         </DataProvider>
