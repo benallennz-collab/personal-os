@@ -11,6 +11,7 @@ export default function VoiceAssistant({ open, onClose }) {
   const [status, setStatus] = useState('idle') // idle | listening | thinking | done | error
   const [result, setResult] = useState(null)
   const recognitionRef = useRef(null)
+  const finalTranscriptRef = useRef('')
 
   useEffect(() => {
     if (!open) {
@@ -30,16 +31,30 @@ export default function VoiceAssistant({ open, onClose }) {
       setResult({ error: true, message: 'Voice input is not supported in this browser. Try Chrome on desktop or Android.' })
       return
     }
+    // Guard against a stray double-invocation leaving two instances listening at once.
+    recognitionRef.current?.stop()
+
     const recognition = new BrowserSpeechRecognition()
     recognition.lang = 'en-US'
     recognition.interimResults = true
     recognition.continuous = true
 
+    finalTranscriptRef.current = ''
+
     recognition.onresult = (event) => {
-      const text = Array.from(event.results)
-        .map((r) => r[0].transcript)
-        .join('')
-      setTranscript(text)
+      // Only scan results new since the last event (event.resultIndex) — re-scanning
+      // from index 0 each time is what causes Chrome to visibly duplicate finalized
+      // segments in continuous mode.
+      let interim = ''
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const chunk = event.results[i][0].transcript
+        if (event.results[i].isFinal) {
+          finalTranscriptRef.current += chunk + ' '
+        } else {
+          interim += chunk
+        }
+      }
+      setTranscript((finalTranscriptRef.current + interim).trim())
     }
     recognition.onerror = () => {
       setListening(false)
